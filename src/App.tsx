@@ -76,8 +76,8 @@ const App = () => {
       isDone: false,
       priority: newTodoPriority,
       deadline: newTodoDeadline,
-      isOverdue: undefined,
-      isDueSoon: undefined,
+      // isOverdue: undefined, // 不要なら削除
+      // isDueSoon: undefined, // 不要なら削除
     };
     const updatedTodos = [...todos, newTodo];
     setTodos(updatedTodos);
