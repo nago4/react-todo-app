@@ -143,8 +143,8 @@ const App = () => {
       isDone: false,
       priority: newTodoPriority,
       deadline: newTodoDeadline,
-      isOverdue: undefined,
-      isDueSoon: undefined,
+      //isOverdue: undefined,
+      //isDueSoon: undefined,
     };
 
     // todos を更新
