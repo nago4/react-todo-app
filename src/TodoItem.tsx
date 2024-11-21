@@ -1,4 +1,3 @@
-// src/TodoItem.tsx
 import React from "react";
 import { Todo } from "./types"; // Todo タイプのインポート
 import dayjs from "dayjs";
@@ -18,7 +17,7 @@ type TodoItemProps = {
   startEditing: (todo: Todo) => void; // 編集用の関数の引数としてタスクを受け取る
 };
 
-const num2star = (n: number): string => "★".repeat(4 - n);
+const num2star = (n: number): string => "★".repeat(n);
 
 const TodoItem: React.FC<TodoItemProps> = ({
   todo,
@@ -64,14 +63,20 @@ const TodoItem: React.FC<TodoItemProps> = ({
         <span className="ml-1 text-orange-500">{num2star(todo.priority)}</span>
       </div>
 
-      {todo.deadline && (
-        <div className="ml-6 flex items-center text-sm text-slate-500 mt-1">
-          <FontAwesomeIcon icon={faClock} flip="horizontal" className="mr-1" />
-          <div className={twMerge(todo.isDone && "line-through opacity-70")}>
-            期限: {dayjs(todo.deadline).format("YYYY年M月D日 H時m分")}
-          </div>
+      <div className="ml-6 flex items-center text-sm mt-1">
+        <FontAwesomeIcon icon={faClock} flip="horizontal" className="mr-1" />
+        <div
+          className={twMerge(
+            todo.isDone && "line-through opacity-70",
+            todo.isOverdue ? "text-red-500" : "text-slate-500"
+          )}
+        >
+          期限:{" "}
+          {todo.deadline
+            ? dayjs(todo.deadline).format("YYYY年M月D日 H時m分")
+            : "期限なし"}
         </div>
-      )}
+      </div>
 
       <div className="flex justify-end mt-2 space-x-2">
         <button

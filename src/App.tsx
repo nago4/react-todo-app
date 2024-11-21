@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Todo } from "./types";
 import { initTodos } from "./initTodos";
 import TodoList from "./TodoList";
@@ -16,6 +16,8 @@ const App = () => {
   const [newTodoNameError, setNewTodoNameError] = useState("");
   const [sortByDeadline, setSortByDeadline] = useState(false);
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
+  const editFormRef = useRef<HTMLDivElement>(null);
+  const addFormRef = useRef<HTMLDivElement>(null);
 
   const [initialized, setInitialized] = useState(false);
   const localStorageKey = "TodoApp";
@@ -41,6 +43,7 @@ const App = () => {
     }
   }, [todos, initialized]);
 
+  // 定期的にタスクの期限をチェックする
   useEffect(() => {
     const interval = setInterval(() => {
       setTodos((prevTodos) =>
@@ -48,18 +51,22 @@ const App = () => {
           const now = dayjs();
           const deadline = dayjs(todo.deadline);
           if (deadline.isBefore(now)) {
-            return { ...todo, isOverdue: true, isDueSoon: false };
-          } else if (deadline.isBefore(now.add(1, "week"))) {
-            return { ...todo, isOverdue: false, isDueSoon: true };
+            return { ...todo, isOverdue: true };
           } else {
-            return { ...todo, isOverdue: false, isDueSoon: false };
+            return { ...todo, isOverdue: false };
           }
         })
       );
-    }, 60000);
+    }, 60000); // 1分ごとにチェック
 
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (editingTodo && editFormRef.current) {
+      editFormRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [editingTodo]);
 
   const isValidTodoName = (name: string): string => {
     if (name.length < 2 || name.length > 32) {
@@ -96,7 +103,6 @@ const App = () => {
       priority: newTodoPriority,
       deadline: newTodoDeadline,
       isOverdue: false,
-      isDueSoon: false,
     };
     const updatedTodos = [...todos, newTodo];
     setTodos(updatedTodos);
@@ -171,19 +177,34 @@ const App = () => {
     setSortByDeadline(!sortByDeadline);
   };
 
+  const scrollToAddForm = () => {
+    if (addFormRef.current) {
+      addFormRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   const sortedTodos = sortByDeadline ? sortTodosByDeadline([...todos]) : todos;
 
   return (
     <div className="mx-4 mt-10 max-w-2xl md:mx-auto">
       <h1 className="mb-4 text-2xl font-bold">TodoApp</h1>
 
-      <button
-        type="button"
-        onClick={handleSortToggle}
-        className="mt-5 rounded-md bg-blue-500 px-3 py-1 font-bold text-white hover:bg-blue-600"
-      >
-        {sortByDeadline ? "締め切りでソート解除" : "締め切りでソート"}
-      </button>
+      <div className="flex space-x-2">
+        <button
+          type="button"
+          onClick={handleSortToggle}
+          className="mt-5 rounded-md bg-blue-500 px-3 py-1 font-bold text-white hover:bg-blue-600"
+        >
+          {sortByDeadline ? "締め切りでソート解除" : "締め切りでソート"}
+        </button>
+        <button
+          type="button"
+          onClick={scrollToAddForm}
+          className="mt-5 rounded-md bg-green-500 px-3 py-1 font-bold text-white hover:bg-green-600"
+        >
+          タスク追加フォームへ
+        </button>
+      </div>
 
       <TodoList
         todos={sortedTodos}
@@ -201,7 +222,7 @@ const App = () => {
         完了済みのタスクを削除
       </button>
 
-      <div className="mt-5 space-y-2 rounded-md border p-3">
+      <div ref={addFormRef} className="mt-5 space-y-2 rounded-md border p-3">
         <h2 className="text-lg font-bold">
           {editingTodo ? "タスクの編集" : "新しいタスクの追加"}
         </h2>
