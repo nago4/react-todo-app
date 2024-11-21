@@ -14,7 +14,8 @@ const App = () => {
   const [newTodoPriority, setNewTodoPriority] = useState(3);
   const [newTodoDeadline, setNewTodoDeadline] = useState<Date | null>(null);
   const [newTodoNameError, setNewTodoNameError] = useState("");
-  const [sortByDeadline, setSortByDeadline] = useState(false); // ソート状態を管理
+  const [sortByDeadline, setSortByDeadline] = useState(false);
+  const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
 
   const [initialized, setInitialized] = useState(false);
   const localStorageKey = "TodoApp";
@@ -40,7 +41,25 @@ const App = () => {
     }
   }, [todos, initialized]);
 
-  const uncompletedCount = todos.filter((todo: Todo) => !todo.isDone).length;
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTodos((prevTodos) =>
+        prevTodos.map((todo) => {
+          const now = dayjs();
+          const deadline = dayjs(todo.deadline);
+          if (deadline.isBefore(now)) {
+            return { ...todo, isOverdue: true, isDueSoon: false };
+          } else if (deadline.isBefore(now.add(1, "week"))) {
+            return { ...todo, isOverdue: false, isDueSoon: true };
+          } else {
+            return { ...todo, isOverdue: false, isDueSoon: false };
+          }
+        })
+      );
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const isValidTodoName = (name: string): string => {
     if (name.length < 2 || name.length > 32) {
@@ -76,8 +95,8 @@ const App = () => {
       isDone: false,
       priority: newTodoPriority,
       deadline: newTodoDeadline,
-      // isOverdue: undefined, // 不要なら削除
-      // isDueSoon: undefined, // 不要なら削除
+      isOverdue: false,
+      isDueSoon: false,
     };
     const updatedTodos = [...todos, newTodo];
     setTodos(updatedTodos);
@@ -107,59 +126,57 @@ const App = () => {
     setTodos(updatedTodos);
   };
 
-  const isDeadlineApproaching = (deadline?: Date | null) => {
-    if (!deadline) return false;
-    const oneWeekFromNow = new Date();
-    oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
-    return deadline <= oneWeekFromNow;
+  const updateTodo = (updatedTodo: Todo) => {
+    const updatedTodos = todos.map((todo) => {
+      if (todo.id === updatedTodo.id) {
+        return updatedTodo;
+      } else {
+        return todo;
+      }
+    });
+    setTodos(updatedTodos);
   };
 
-  // 締め切りに基づいてソートする関数
-  const sortTodosByDeadline = (todos: Todo[]) => {
-    return todos.sort((a, b) => {
-      const deadlineA = a.deadline ? new Date(a.deadline).getTime() : Infinity; // 終わらないタスクには無限大を設定
-      const deadlineB = b.deadline ? new Date(b.deadline).getTime() : Infinity;
-      return deadlineA - deadlineB;
-    });
+  const startEditing = (todo: Todo) => {
+    setEditingTodo(todo);
+    setNewTodoName(todo.name);
+    setNewTodoPriority(todo.priority);
+    setNewTodoDeadline(todo.deadline ?? null);
+  };
+
+  const saveEditingTodo = () => {
+    if (editingTodo) {
+      const updatedTodo = {
+        ...editingTodo,
+        name: newTodoName,
+        priority: newTodoPriority,
+        deadline: newTodoDeadline,
+      };
+      updateTodo(updatedTodo);
+      setEditingTodo(null);
+      setNewTodoName("");
+      setNewTodoPriority(3);
+      setNewTodoDeadline(null);
+    }
+  };
+
+  const cancelEditing = () => {
+    setEditingTodo(null);
+    setNewTodoName("");
+    setNewTodoPriority(3);
+    setNewTodoDeadline(null);
   };
 
   const handleSortToggle = () => {
     setSortByDeadline(!sortByDeadline);
   };
 
-  // ソートしたリストを取得
   const sortedTodos = sortByDeadline ? sortTodosByDeadline([...todos]) : todos;
-
-  const addTodo = (event: React.MouseEvent<HTMLButtonElement>) => {
-    const err = isValidTodoName(newTodoName);
-    if (err !== "") {
-      setNewTodoNameError(err);
-      return;
-    }
-
-    const newTodo: Todo = {
-      id: uuid(),
-      name: newTodoName,
-      isDone: false,
-      priority: newTodoPriority,
-      deadline: newTodoDeadline,
-      //isOverdue: undefined,
-      //isDueSoon: undefined,
-    };
-
-    // todos を更新
-    setTodos([...todos, newTodo]);
-    // リセット
-    setNewTodoName("");
-    setNewTodoPriority(3);
-    setNewTodoDeadline(null);
-  };
 
   return (
     <div className="mx-4 mt-10 max-w-2xl md:mx-auto">
       <h1 className="mb-4 text-2xl font-bold">TodoApp</h1>
 
-      {/* 締め切りでソートするボタン */}
       <button
         type="button"
         onClick={handleSortToggle}
@@ -173,6 +190,7 @@ const App = () => {
         updateIsDone={updateIsDone}
         remove={remove}
         isDeadlineApproaching={isDeadlineApproaching}
+        startEditing={startEditing}
       />
 
       <button
@@ -184,7 +202,9 @@ const App = () => {
       </button>
 
       <div className="mt-5 space-y-2 rounded-md border p-3">
-        <h2 className="text-lg font-bold">新しいタスクの追加</h2>
+        <h2 className="text-lg font-bold">
+          {editingTodo ? "タスクの編集" : "新しいタスクの追加"}
+        </h2>
         <div>
           <div className="flex items-center space-x-2">
             <label className="font-bold" htmlFor="newTodoName">
@@ -243,20 +263,57 @@ const App = () => {
                 : ""
             }
             onChange={updateDeadline}
-            className="rounded-md border p-2"
+            className="rounded-md border border-gray-400 px-2 py-0.5"
           />
         </div>
 
-        <button
-          type="button"
-          onClick={addTodo}
-          className="mt-5 rounded-md bg-green-500 px-3 py-1 font-bold text-white hover:bg-green-600"
-        >
-          タスク追加
-        </button>
+        {editingTodo ? (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={saveEditingTodo}
+              className="rounded-md bg-green-500 px-3 py-1 font-bold text-white hover:bg-green-600"
+            >
+              保存
+            </button>
+            <button
+              type="button"
+              onClick={cancelEditing}
+              className="rounded-md bg-gray-500 px-3 py-1 font-bold text-white hover:bg-gray-600"
+            >
+              キャンセル
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={addNewTodo}
+            className={twMerge(
+              "rounded-md bg-indigo-500 px-3 py-1 font-bold text-white hover:bg-indigo-600",
+              newTodoNameError && "cursor-not-allowed opacity-50"
+            )}
+          >
+            追加
+          </button>
+        )}
       </div>
     </div>
   );
+};
+
+const sortTodosByDeadline = (todos: Todo[]) => {
+  return todos.sort((a, b) => {
+    const deadlineA = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+    const deadlineB = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+    return deadlineA - deadlineB;
+  });
+};
+
+const isDeadlineApproaching = (deadline?: Date | null) => {
+  if (!deadline) return false;
+  const oneWeekFromNow = new Date();
+  oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+  return deadline <= oneWeekFromNow;
 };
 
 export default App;
