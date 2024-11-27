@@ -15,7 +15,6 @@ const TodoList: React.FC<TodoListProps> = ({
   todos,
   updateIsDone,
   remove,
-  isDeadlineApproaching,
   startEditing, // 追加
 }) => {
   return (
