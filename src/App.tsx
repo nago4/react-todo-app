@@ -19,6 +19,9 @@ const App = () => {
   const editFormRef = useRef<HTMLDivElement>(null);
   const addFormRef = useRef<HTMLDivElement>(null);
 
+  const [images, setImages] = useState<string[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
   const [initialized, setInitialized] = useState(false);
   const localStorageKey = "TodoApp";
 
@@ -148,6 +151,7 @@ const App = () => {
     setNewTodoName(todo.name);
     setNewTodoPriority(todo.priority);
     setNewTodoDeadline(todo.deadline);
+    scrollToAddForm();
   };
 
   const saveEditingTodo = () => {
@@ -183,11 +187,18 @@ const App = () => {
     }
   };
 
+  // 未完了のタスクの数をカウントする関数
+  const getRemainingTodosCount = () => {
+    return todos.filter((todo) => !todo.isDone).length;
+  };
+
   const sortedTodos = sortByDeadline ? sortTodosByDeadline([...todos]) : todos;
 
   return (
     <div className="mx-4 mt-10 max-w-2xl md:mx-auto">
       <h1 className="mb-4 text-2xl font-bold">TodoApp</h1>
+
+      <p className="mb-4 text-lg">残りのタスク: {getRemainingTodosCount()}</p>
 
       <div className="flex space-x-2">
         <button
